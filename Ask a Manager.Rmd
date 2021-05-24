@@ -1,0 +1,53 @@
+---
+title: "Ask a Manager Survey (Tidy Tuesday)"
+author: "Eli"
+date: "5/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Load in Packages
+
+```{r}
+library(tmap)
+library(tidyverse)
+library(tigris)
+library(usmap)
+library(stringr)
+library(ggplot2)
+library(viridis)
+```
+
+```{r}
+survey <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-18/survey.csv')
+```
+
+Filter to computer tech industry
+```{r}
+computerTech <- survey %>% 
+  filter(industry == "Computing or Tech" & str_detect(state, ",") == FALSE) %>% 
+  group_by(state) %>% 
+  summarise(averageSalary = mean(annual_salary), totalRespondents = n()) %>% 
+  arrange(desc(averageSalary))
+```
+
+```{r}
+techByState <- group_by()
+```
+
+```{r}
+plot_usmap(data = computerTech, values = "averageSalary")+
+  scale_fill_viridis_c()+
+  #scale_fill_continuous(name = "Average Salary", low = "blue", high = "orange")+
+  theme(legend.position = 'right')
+```
+
+
+Bar Chart to display the numbers better
+```{r}
+ggplot(data = computerTech)+
+  geom_bar(aes(state, averageSalary), stat = 'identity')+
+             coord_flip()
+```
