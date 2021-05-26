@@ -1,0 +1,114 @@
+---
+title: "Mario Kart (5-25-21)"
+author: "Eli"
+date: "5/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load libraries
+```{r}
+library(tidyverse)
+library(skimr)
+library(lubridate)
+library(ggplot2)
+library(gganimate)
+library(gifski)
+library(png)
+library(transformr)
+```
+
+Read in data
+```{r}
+records <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-25/records.csv')
+drivers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-25/drivers.csv')
+```
+
+
+```{r}
+glimpse(drivers)
+```
+
+```{r}
+skim(drivers)
+```
+
+```{r}
+ThreeLap <- records %>% 
+  filter(type == 'Three Lap') %>% 
+  mutate(Year = year(date), ImprovementTime = diff(time))
+```
+Trying to make line graph with 16 different lines, one for each course and the course time over time.
+#Shortcuts are causing the zigzag shape- need to remove shortcut times
+Take out shortcut times
+```{r}
+ThreeLapNoShort <- filter(ThreeLap, shortcut == 'No')
+```
+
+
+```{r}
+ggplot(ThreeLap, aes(date, time, color = track))+
+  geom_line()
+ggplot(ThreeLapNoShort, aes(date, time, color = track))+
+  geom_line()
+#The time changes are so small!
+```
+
+Take differences
+```{r}
+ThreeLapNoShort <- group_by(ThreeLapNoShort,track) %>% 
+  mutate(ImprovementTime = abs(time-lag(time,default = first(time))))
+```
+
+Get Cumalitive Sum grouped by track
+```{r}
+ThreeLapNoShort <- ThreeLapNoShort %>% 
+  group_by(track) %>% 
+  mutate(CumalitiveImprovement = cumsum(ImprovementTime))
+```
+
+Graph Improvement Times!
+Facet Wrapped By Track
+```{r}
+ggplot(ThreeLapNoShort, aes(date, CumalitiveImprovement))+
+  geom_line()+
+  ggtitle("Mario Kart World Record Improvement Times (No Shortcuts)")+
+  ylab('Cumalitve Improvement (seconds)')+
+  facet_wrap(~track)
+
+ggsave('ImprovementTimesFacet.png')
+```
+Plotting all lines on one graph
+```{r}
+ggplot(ThreeLapNoShort, aes(date, CumalitiveImprovement, color = track))+
+  geom_line()+
+  ggtitle("Mario Kart World Record Improvement Times (No Shortcuts)")+
+  ylab('Cumalitve Improvement (seconds)')
+
+ggsave('ImprovementTimesOneGraph.png')
+```
+
+Now trying to animate graph
+#I don't think I can transition by day, so going to find max times for each year
+```{r}
+maxTimes <- ThreeLapNoShort %>% 
+  group_by(track, Year) %>% 
+  summarise(Time = min(time))
+```
+```{r}
+ggplot(maxTimes, aes(Year, Time, color = track))+
+  geom_line()#+
+  #transition_reveal(Year)
+```
+
+#I think I want to look at average time someone held a record OR average time in days a map record held by map
+
+```{r}
+AverageRecordHold <- records %>% 
+  group_by(track) %>% 
+  summarise(AverageRecordDuration = mean(record_duration))
+```
+
