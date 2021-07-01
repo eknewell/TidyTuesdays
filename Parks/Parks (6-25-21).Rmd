@@ -1,0 +1,100 @@
+---
+title: "Parks"
+author: "Eli"
+date: "6/25/2021"
+output: html_document:
+keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Packages
+```{r}
+library(dplyr)
+library(ggplot2)
+library(fmsb)
+library(textshape)
+```
+
+Read in Data
+```{r}
+parks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-22/parks.csv')
+```
+
+Filter Data to Cities I like
+```{r}
+Cities <- parks %>% 
+  filter(city == 'Charlotte' | city == 'Cincinnati' | city == 'Indianapolis' | city == 'Charlotte/Mecklenburg County' | city == 'Austin')
+```
+
+Filter to just 2020
+```{r}
+city2020 <- Cities %>% 
+  filter(year == 2020) %>% 
+  select(city_dup,med_park_size_points,park_pct_city_points,pct_near_park_points,spend_per_resident_points,amenities_points)
+
+parks2020 <- parks %>% 
+  filter(year == 2020)
+```
+
+Add max/min values for radar chart
+```{r}
+max_min <- data.frame(c('Max', 'Min'),
+                      c(max(parks2020$med_park_size_points),min(parks2020$med_park_size_points)),
+                      c(max(parks2020$park_pct_city_points), min(parks2020$park_pct_city_points)),
+                      c(max(parks2020$pct_near_park_points), min(parks2020$pct_near_park_points)),
+                      c(max(parks2020$spend_per_resident_points), min(parks2020$spend_per_resident_points)),
+                      c(max(parks2020$amenities_points), min(parks2020$amenities_points)))
+
+names(max_min) <- c('city_dup', 'med_park_size_points', 'park_pct_city_points', 'pct_near_park_points', 'spend_per_resident_points', 'amenities_points')
+```
+
+Combine max/min to cities I want to compare
+```{r}
+compared_cities <- rbind(city2020, max_min)
+```
+
+Convert first row to row names and data frame and sort so max and min are first two rows. Rename rows
+```{r}
+order <- c('Max', 'Min', 'Austin', 'Cincinnati', 'Charlotte')
+
+compared_cities <- compared_cities %>% 
+  #slice(match(order,city_dup))
+
+compared_cities <- column_to_rownames(compared_cities,1)
+
+#Rename rows
+compared_cities <- compared_cities %>% 
+  rename('Median Park Size Score' = med_park_size_points,
+         'Amenties Score' = amenities_points,
+         'Spending Score' = spend_per_resident_points,
+         'People % near Park Score' = pct_near_park_points,
+         'Park % of City Score' = park_pct_city_points)
+```
+Rename again to help labels not overlap
+```{r}
+compared_cities <- compared_cities %>% 
+  rename('Spending Score' = 'Spending per Resident Score')
+```
+
+Make colors for chart
+```{r}
+colors_fill <- c(scales::alpha('gray', .2),
+                 scales::alpha('red', .2),
+                 scales::alpha('green', .2),
+                 scales::alpha('blue',.2))
+```
+
+Make the radar chart!
+```{r}
+png(filename = 'park.png',width = 700)
+radarchart(compared_cities, seg = 5, title = 'Park Comparisons (Austin, Cincinnati, Charlotte)', axistype = 2, pfcol = colors_fill) 
+legend(x=-1.8, 
+       y=1.2, 
+       legend = rownames(compared_cities[c(3,4,5),]), 
+       bty = "n", pch=20 , col = colors_fill, cex = 1, pt.cex = 2, y.intersp = .8)
+dev.off()
+```
+
