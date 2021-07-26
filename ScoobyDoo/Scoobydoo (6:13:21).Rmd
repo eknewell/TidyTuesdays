@@ -1,0 +1,84 @@
+---
+title: "Scoobydoo"
+author: "Eli"
+date: "7/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Read in Data
+```{r}
+scoobydoo <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-13/scoobydoo.csv')
+```
+
+Honestly what I want to do is pretty simple. I want to look at how many criminals each main character caught- but I want to use their pictures on the graph in the label.
+
+Load packages
+```{r}
+library(ggplot2)
+library(ggtext)
+library(tidyverse)
+```
+
+```{r}
+x <- 
+  scoobydoo %>% 
+  select(season, title, date_aired,
+    starts_with("caught"),
+    starts_with("captured"),
+    starts_with("unmask"),
+    starts_with("snack"),
+    -contains("other"),
+    -contains("not")) %>% 
+  filter(title!= "Wrestle Maniacs")
+```
+
+three_lines <- x %>% 
+  pivot_longer(cols = -c("season","title")) %>% 
+  separate(name,into = c("action","character"), sep = "_") %>% 
+  pivot_wider(names_from = "action", values_from = "value")
+
+```{r}
+cleaned_scooby <- x %>% 
+  pivot_longer(cols = -c("season","title", "date_aired"), names_to = c(".value","character"), names_sep = "_") %>% 
+  mutate(
+    across(c("caught","captured","unmask","snack"), ~as.logical(.x) %>% as.integer()) 
+  ) %>% 
+  na.omit()
+
+```
+
+Group by character and sum up how many criminals each caught
+```{r}
+criminal_catches <- cleaned_scooby %>% 
+  group_by(character) %>% 
+  summarise(caught_criminals = sum(caught))
+```
+Create images as labels
+```{r}
+labels = c(
+  shaggy = "<img src='shaggy.png' width='40' /><br>",
+  scooby = "<img src='scooby.png' width='40' /><br>",
+  fred = "<img src='fred.png' width='40' /><br>",
+  daphnie = "<img src='daphne.jpg' width='40' /><br>",
+  velma = "<img src='velma.png' width='40' /><br>"
+)
+```
+Graph Results, and try and get pictures for axis labels
+```{r}
+ggplot(criminal_catches, aes(character,caught_criminals))+
+  geom_bar(stat = 'identity', fill = '#79AF30')+
+  theme_dark()+
+  labs(title = "Who caught the most criminals? It's Scooby's world and we are all just living in it!", y = 'Criminals Caught', caption = 'Source:  https://www.kaggle.com/williamschooleman/scoobydoo-complete')+
+  scale_x_discrete(name = NULL,labels = labels) +
+    theme(axis.text.x = element_markdown())
+
+ggsave('ScoobyCriminals.png')
+
+
+```
+
+
