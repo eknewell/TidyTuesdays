@@ -1,0 +1,93 @@
+---
+title: "Starbucks (12-22-21)"
+author: "Eli"
+date: "12/22/2021"
+output: html_document
+---
+
+Read in data
+```{r}
+starbucks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-12-21/starbucks.csv')
+```
+
+Load packages
+```{r}
+library(tidyverse)
+library(skimr)
+library(ggplot2)
+library(hrbrthemes)
+library(ggdark)
+```
+
+```{r}
+glimpse(starbucks)
+```
+
+```{r}
+table(starbucks$product_name)
+```
+
+```{r}
+length(unique(starbucks$product_name))
+```
+
+Filter down to one size drink AND one milk size
+#Looks like milk 1 (skim milk) has 10 more drinks than other milks- so using that so those drinks don't get dropped
+```{r}
+one_size <- filter(starbucks, size == 'grande', milk == 0 | milk == 1, whip == 0)
+two_size <- filter(starbucks, size == 'grande', milk == 0 | milk == 2, whip == 0)
+
+fruity_drinks <- one_size %>% 
+  filter(grepl('Smoothie|Refreshers|Lemonade', product_name))
+```
+
+Add "drink type" category
+I think I want to investigate average sugar levels for each category with waffle charts!
+```{r}
+one_size <- one_size %>% 
+  mutate(Drink_Type = ifelse(grepl('Smoothie|Refreshers|Lemonade', product_name),'Fruit Drink', ifelse(grepl('Latte', product_name),'Latte', ifelse(grepl('Coffee|coffee', product_name),'Regular Coffee', ifelse(grepl('Frappuccino', product_name),'Frappuccino', ifelse(grepl('Mocha', product_name),'Mocha', ifelse(grepl('Hot Chocolate', product_name),'Hot Chocolate', 'Other')))))))
+```
+
+Filter out 'other' category
+```{r}
+final_drinks <- one_size %>% 
+  filter(Drink_Type != 'Other')
+```
+
+Aggregate data!
+```{r}
+sugar_by_type <- final_drinks %>% 
+  group_by(Drink_Type) %>% 
+  summarise(Avg_Sugar = mean(sugar_g), Total_Drinks = n())
+```
+get labels ready
+```{r}
+label1 <- tibble(
+  sugar_g = 5,
+  calories = 10,
+  label = "Your good old cup of black coffee"
+)
+```
+
+```{r}
+ggplot(final_drinks, aes(sugar_g,calories, color = Drink_Type))+
+  geom_point()+
+  labs(caption = ' Data from Starbucks',
+       title = 'Starbucks drink\'s sugar and calorie content by drink type',
+       subtitle = 'Amounts based on grande size, nonfat milk, no whipped cream',
+       x = 'Sugar per drink (grams)',
+       y = 'Calories per drink',
+       col = 'Drink Type')+
+  annotate("rect", xmin = -1, xmax = 1, ymin = -1.5, ymax = 16,
+           alpha = .1,fill = "white")+
+  annotate("text", x = 8.5, y = 12, label = "Regular Black Coffee",
+           family = "serif", fontface = "italic", colour = "white", size = 2.5)+
+  annotate("segment", x = 61, xend = 66.8, y = 180, yend = 284,
+           colour = "white", size = 1, arrow = arrow())+
+  annotate("text", x = 58, y = 165, label = "The Caffè Vanilla Frappuccino Blended \nhas the most sugar with 67 grams!",
+           family = "serif", fontface = "italic", colour = "white", size = 2.5)+
+  annotate("rect", xmin = 30, xmax = 33, ymin = 115, ymax = 135,
+           alpha = .1,fill = "white")+
+  annotate("text", x = 38, y = 100, label = "Fruit drinks are smoothies, \nrefreshers, or lemonades", family = "serif", fontface = "italic", colour = "white", size = 2.5)+
+  dark_theme_minimal()
+```
