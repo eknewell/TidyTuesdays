@@ -1,0 +1,58 @@
+---
+title: "Eli's Apple Music Data"
+author: "Eli"
+date: "1/4/2022"
+output: html_document
+---
+Load packages
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+library(gt)
+library(gtExtras)
+library(paletteer)
+```
+
+
+Read in data
+```{r}
+music <- read_excel("apple_replay2021.xlsm")
+```
+
+Add pct of total music column
+```{r}
+music$Pct_of_Total_Music <- music$Hours_Played/413*100
+```
+
+Reorder columns
+```{r}
+music <- music[,c(1,2,3,6,4,5)]
+```
+
+Make table
+```{r}
+music_table <- music %>% 
+  gt() %>% 
+   tab_header(title = "Eli's Top Artists of 2021",
+              subtitle = "Tswift takes the cake by a mile, accounting for 84/413 hours I listened to :0 Followed by an end of year push by Caamp that got them to second! Didn't discover Caamp til August") %>% 
+   tab_source_note(source_note = "Data: Apple Music") %>% 
+  data_color(columns = c(Top_Song_Plays), 
+             colors = scales::col_numeric(palette = as.character(paletteer_d("ggsci::green_material", n = 5)), domain = NULL)) %>% 
+  cols_label(
+    Hours_Played = "Hours Played",
+    Pct_of_Total_Music = "% of Total Music",
+    Top_Song_Plays = "Top Song Plays",
+    Top_Song = 'Top Song'
+  ) %>% 
+  gt_plt_bar_pct(Pct_of_Total_Music, scaled = TRUE) %>% 
+  gt_theme_538()
+  
+  
+
+music_table
+```
+
+```{r}
+gtsave_extra(music_table, 'music_table.png',  path = getwd())
+```
